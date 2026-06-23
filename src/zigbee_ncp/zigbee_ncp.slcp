@@ -9,7 +9,7 @@ author: Nerivec
 sdk:
   vendor: silabs
   id: simplicity_sdk
-  version: 2025.12.3
+  version: 2026.6.0
 toolchain_settings: []
 
 component:
@@ -102,18 +102,6 @@ define:
   - name: SL_ZIGBEE_MULTICAST_TABLE_SIZE
     value: 26
   ## xg21
-  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 200
-    condition: ["device_generic_family_efr32xg21"]
-  ## xg24
-  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 254
-    condition: ["device_generic_family_efr32xg24"]
-  ## xg26
-  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
-    value: 254
-    condition: ["device_generic_family_efr32xg26"]
-  ## xg21
   - name: SL_ZIGBEE_DISCOVERY_TABLE_SIZE
     value: 8
     condition: ["device_generic_family_efr32xg21"]
@@ -190,6 +178,9 @@ configuration:
   - name: SL_ZIGBEE_KEY_TABLE_SIZE
     value: 1
   ## xg21
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 200
+    condition: ["device_generic_family_efr32xg21"]
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 200
     condition: ["device_generic_family_efr32xg21"]
@@ -203,6 +194,9 @@ configuration:
     value: 32
     condition: ["device_generic_family_efr32xg21"]
   ## xg24
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg24"]
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
     condition: ["device_generic_family_efr32xg24"]
@@ -222,6 +216,9 @@ configuration:
     value: SL_ZIGBEE_HUGE_PACKET_BUFFER_HEAP
     condition: ["device_generic_family_efr32xg24"]
   ## xg26
+  - name: SL_ZIGBEE_ROUTE_TABLE_SIZE
+    value: 254
+    condition: ["device_generic_family_efr32xg26"]
   - name: SL_ZIGBEE_SOURCE_ROUTE_TABLE_SIZE
     value: 254
     condition: ["device_generic_family_efr32xg26"]

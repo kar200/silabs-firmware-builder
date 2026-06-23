@@ -240,8 +240,11 @@ def load_toolchains(paths: list[pathlib.Path]) -> dict[pathlib.Path, str]:
                 value = ast.literal_eval(line.split(" = ", 1)[1][:-1])
                 version_info[name] = value
 
-        toolchains[toolchain] = (
-            version_info["basever"] + "." + version_info["datestamp"]
+        toolchains[toolchain] = version_info["basever"]
+        LOGGER.info(
+            "Found toolchain: basever=%s, datestamp=%s",
+            version_info["basever"],
+            version_info["datestamp"],
         )
 
     return toolchains
