@@ -16,3 +16,6 @@ src/**/*.bak
 misc/**/*.bak
 var/
 *.zap~
+# Local build artifacts
+outputs/
+.build-work/

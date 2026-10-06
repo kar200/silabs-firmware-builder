@@ -1,0 +1,140 @@
+name: Build elife firmwares
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - 'elife'
+      - 'elife-*'
+      - 'custom/elife-*'
+
+concurrency:
+  group: elife-build-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  resolve-container:
+    name: Resolve build container
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    outputs:
+      container_name: ${{ steps.resolve.outputs.container_name }}
+      image_name: ${{ steps.resolve.outputs.image_name }}
+      build_image: ${{ steps.resolve.outputs.build_image }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Resolve container image
+        id: resolve
+        run: |
+          tag_name=$(echo "${{ hashFiles('Dockerfile', 'requirements.txt') }}" | cut -c-16)
+          image_name=$(echo "${{ github.repository }}" | awk '{print tolower($0)}')
+
+          # Reuse an already-built image for this exact Dockerfile if available.
+          # The fork's Dockerfile currently matches upstream, so the upstream
+          # image (same tag hash) is a valid fallback. Otherwise build our own.
+          for candidate in "$image_name" "nerivec/silabs-firmware-builder"; do
+            if docker manifest inspect ${{ env.REGISTRY }}/$candidate:$tag_name >/dev/null 2>&1; then
+              echo "container_name=${{ env.REGISTRY }}/$candidate:$tag_name" >> "$GITHUB_OUTPUT"
+              echo "image_name=$candidate" >> "$GITHUB_OUTPUT"
+              echo "build_image=false" >> "$GITHUB_OUTPUT"
+              exit 0
+            fi
+          done
+
+          echo "container_name=${{ env.REGISTRY }}/$image_name:$tag_name" >> "$GITHUB_OUTPUT"
+          echo "image_name=$image_name" >> "$GITHUB_OUTPUT"
+          echo "build_image=true" >> "$GITHUB_OUTPUT"
+
+  build-container:
+    name: Build container
+    needs: [resolve-container]
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.resolve-container.outputs.build_image == 'true'
+
+      - name: Log in to the GitHub container registry
+        if: needs.resolve-container.outputs.build_image == 'true'
+        uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4.2.0
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Docker Buildx
+        if: needs.resolve-container.outputs.build_image == 'true'
+        uses: docker/setup-buildx-action@bb05f3f5519dd87d3ba754cc423b652a5edd6d2c # v4.2.0
+
+      - name: Build and Push
+        if: needs.resolve-container.outputs.build_image == 'true'
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: .
+          file: Dockerfile
+          platforms: linux/amd64
+          tags: ${{ needs.resolve-container.outputs.container_name }}
+          cache-from: type=registry,ref=${{ env.REGISTRY }}/${{ needs.resolve-container.outputs.image_name }}:cache
+          cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ needs.resolve-container.outputs.image_name }}:cache,mode=max
+          outputs: type=image,compression=zstd,compression-level=19,force-compression=true,push=true
+
+  list-manifests:
+    name: List elife firmware manifests
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - id: set-matrix
+        run: |
+          echo "matrix=$(find manifests/elife -type f -name '*.yaml' -print | sort | jq -R -s -c 'split("\n")[:-1]')" >> "$GITHUB_OUTPUT"
+
+  build-firmwares:
+    name: Firmware builder
+    needs: [list-manifests, resolve-container, build-container]
+    runs-on: ubuntu-latest
+    container:
+      image: ${{ needs.resolve-container.outputs.container_name }}
+      options: --user root
+    strategy:
+      matrix:
+        manifest: ${{ fromJson(needs.list-manifests.outputs.matrix) }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Build firmware
+        id: build-firmware
+        run: |
+          # GHA's `container:` sets HOME=/github/home, but slc-cli's adapter-pack
+          # discovery scans $HOME/.silabs/... where slt put everything during the
+          # image build (HOME=/root). Restore it for this step.
+          export HOME=/root
+
+          /opt/venv/bin/python3 tools/build_project.py \
+            --manifest "${{ matrix.manifest }}" \
+            --build-dir build \
+            --output-dir outputs \
+            --output gbl \
+            --output hex \
+            --output out \
+            --repo-owner "$GITHUB_REPOSITORY_OWNER" \
+            --repo-hash $(git rev-parse --short=8 "$GITHUB_SHA")
+
+          # Get the basename of the GBL in `outputs`
+          output_basename=$(basename -- $(basename -- $(ls -1 outputs/*.gbl | head -n 1)) .gbl)
+          echo "output_basename=$output_basename" >> "$GITHUB_OUTPUT"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: firmware-build-${{ steps.build-firmware.outputs.output_basename }}
+          path: outputs/*
+          compression-level: 9
+          if-no-files-found: error

@@ -1,0 +1,40 @@
+# Sercomm HG6244B (eLife V2 / BCM6856 host) - Silicon Labs EFR32MG21 co-processor.
+# USART0 routing: PA06=TX, PA07=RX without hardware CTS/RTS flow control.
+# Device: EFR32MG21A010F512IM32 (512 KB Flash, 64 KB RAM).
+name: Sercomm HG6244B Zigbee NCP (TX PA06 RX PA07)
+device: EFR32MG21A010F512IM32
+base_project: src/zigbee_ncp
+filename: "{manifest_name}_{sdk_version}_{fw_version}_{baudrate}_{fw_variant}"
+sdk: "simplicity_sdk:2026.6.1"
+toolchain: "gcc:14.2.1"
+
+gbl:
+  fw_type: zigbee_ncp
+  baudrate: 115200
+  fw_variant: sw_flow
+
+c_defines:
+  SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
+  SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: uartFlowControlSoftware
+
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL: USART0
+  SL_IOSTREAM_USART_VCOM_PERIPHERAL_NO: 0
+
+  SL_IOSTREAM_USART_VCOM_TX_PORT: SL_GPIO_PORT_A
+  SL_IOSTREAM_USART_VCOM_TX_PIN:  6
+
+  SL_IOSTREAM_USART_VCOM_RX_PORT: SL_GPIO_PORT_A
+  SL_IOSTREAM_USART_VCOM_RX_PIN:  7
+
+  SL_IOSTREAM_USART_VCOM_CTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_CTS_PIN:  0
+
+  SL_IOSTREAM_USART_VCOM_RTS_PORT: 0
+  SL_IOSTREAM_USART_VCOM_RTS_PIN:  0
+
+  SL_CLOCK_MANAGER_HFXO_CTUNE: 128
+  SL_CLOCK_MANAGER_HFXO_FREQ: 38400000
+  SL_CLOCK_MANAGER_HFXO_PRECISION: 10
+
+  SL_RAIL_UTIL_RSSI_OFFSET: -11
+
