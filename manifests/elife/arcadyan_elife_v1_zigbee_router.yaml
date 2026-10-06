@@ -17,8 +17,11 @@ add_components:
   - id: cli
     instance:
       - inst
+  - id: iostream_retarget_stdio
 
 c_defines:
+  SL_CLI_INST_IOSTREAM_HANDLE: sl_iostream_vcom_handle
+  SL_IOSTREAM_USART_VCOM_RESTRICT_ENERGY_MODE_TO_ALLOW_RECEPTION: 1
   SL_IOSTREAM_USART_VCOM_BAUDRATE: 115200
   SL_IOSTREAM_USART_VCOM_FLOW_CONTROL_TYPE: usartHwFlowControlCtsAndRts
 
